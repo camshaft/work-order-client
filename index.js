@@ -50,29 +50,37 @@ Job.prototype.isType = function(type) {
 };
 
 Job.prototype.start = function(data, cb) {
-  var opts = url.parse(this.root);
-  opts.path = resolve(this.root, this.state.start);
-  postJSON(opts, data, cb);
+  if (this.state.start) {
+    var opts = url.parse(this.root);
+    opts.path = resolve(this.root, this.state.start);
+    postJSON(opts, data, cb);
+  }
 }
 
 Job.prototype.status = function(data, cb) {
-  var opts = url.parse(this.root);
-  opts.path = resolve(this.root, this.state.status);
-  if (data) {
-    postJSON(opts, data, cb)
-  } else {
-    getJSON(opts, cb);
+  if (this.state.status) {
+    var opts = url.parse(this.root);
+    opts.path = resolve(this.root, this.state.status);
+    if (data) {
+      postJSON(opts, data, cb)
+    } else {
+      getJSON(opts, cb);
+    }
   }
 };
 
 Job.prototype.complete = function(data, cb) {
-  var opts = url.parse(this.root);
-  opts.path = resolve(this.root, this.state.complete);
-  postJSON(opts, data, cb);
+  if (this.state.complete) {
+    var opts = url.parse(this.root);
+    opts.path = resolve(this.root, this.state.complete);
+    postJSON(opts, data, cb);
+  }
 };
 
 Job.prototype.fail = function(data, cb) {
-  var opts = url.parse(this.root);
-  opts.path = resolve(this.root, this.state.fail);
-  postJSON(opts, data, cb);
+  if (this.state.fail) {
+    var opts = url.parse(this.root);
+    opts.path = resolve(this.root, this.state.fail);
+    postJSON(opts, data, cb);
+  }
 };
