@@ -3,6 +3,9 @@
  */
 
 var superagent = require('superagent');
+var getJSON = require('./getJson').getJSON;
+var postJSON = require('./getJson').postJSON;
+var url = require('url');
 var resolve = require('url').resolve;
 
 module.exports = Server;
@@ -10,91 +13,66 @@ module.exports = Server;
 function Server(root) {
   if (!(this instanceof Server)) return new Server(root);
   this.root = root;
-};
-
-Server.prototype.orders = function(cb) {
-  var root = this.root;
-
-  var queue = new Queue(root);
-  queue.refresh(cb);
+  this.queue = new Queue(root);
 };
 
 function Queue(root) {
   this.root = root;
+  this.state = null;
 };
 
 Queue.prototype.refresh = function(cb) {
-  var self = this;
-  superagent
-    .get(root)
-    .on('error', cb)
-    .end(function(res) {
-      if (res.error) return cb(res.error);
-
-      self.state = res.body;
-      cb(null, self);
-    });
+  var self = this;  
+  getJSON(url.parse(self.root), function(status, data) {
+    self.state = data
+    cb(null, self);
+  });
 };
 
-Queue.prototype.checkout = function(index, cb) {
+Queue.prototype.get = function(index, cb) {
   var self = this;
   var item = self.state.collection.items[index];
+  var opts = url.parse(self.root);
+  opts.path = item.href;
+  getJSON(opts, function(status, data) {
+    cb(null, new Job(self.root, item.href, data));
+  });
+}
 
-  superagent
-    .get(resolve(self.root, item.href))
-    .on('error', cb)
-    .end(function(res) {
-      if (res.error) return cb(res.error);
-
-      // TODO do we need to check the status?
-
-      superagent
-        .post(resolve(self.root, res.body.start))
-        .on('error', cb)
-        .end(function(res) {
-          if (res.error) return cb(res.error);
-
-          cb(null, new Job(self.root, res.body));
-        });
-    });
-};
-
-function Job(root, state) {
+function Job(root, path, state) {
   this.state = state;
   this.root = root;
+  this.path = path;
 };
 
 Job.prototype.isType = function(type) {
   return type === this.state.type;
 };
 
-Job.prototype.status = function(cb) {
-  superagent
-    .post(resolve(this.root, this.state.status))
-    .on('error', cb)
-    .end(function(res) {
-      if (res.error) return cb(res.error);
-      cb(null, res.body);
-    });
+Job.prototype.start = function(data, cb) {
+  var opts = url.parse(this.root);
+  opts.path = resolve(this.root, this.state.start);
+  postJSON(opts, data, cb);
+}
+
+Job.prototype.status = function(data, cb) {
+  var opts = url.parse(this.root);
+  opts.path = resolve(this.root, this.state.status);
+  if (data) {
+    postJSON(opts, data, cb)
+  } else {
+    getJSON(opts, cb);
+  }
 };
 
 Job.prototype.complete = function(data, cb) {
-  superagent
-    .post(resolve(this.root, this.state.complete))
-    .send(data)
-    .on('error', cb)
-    .end(function(res) {
-      if (res.error) return cb(res.error);
-      cb();
-    });
+  var opts = url.parse(this.root);
+  opts.path = resolve(this.root, this.state.complete);
+  postJSON(opts, data, cb);
 };
 
-Job.prototype.fail = function(cb) {
-  superagent
-    .post(resolve(this.root, this.state.fail))
-    .on('error', cb)
-    .end(function(res) {
-      if (res.error) return cb(res.error);
-      cb();
-    });
+Job.prototype.fail = function(data, cb) {
+  var opts = url.parse(this.root);
+  opts.path = resolve(this.root, this.state.fail);
+  postJSON(opts, data, cb);
 };
