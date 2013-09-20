@@ -9,6 +9,6 @@
   "author": "Cameron Bytheway <cameron@theflokk.com>",
   "license": "MIT",
   "dependencies": {
-    "superagent": "~0.15.4"
+    "request": "~2.27.0"
   }
 }

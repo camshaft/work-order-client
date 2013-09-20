@@ -2,9 +2,7 @@
  * Module dependencies
  */
 
-var superagent = require('superagent');
-var getJSON = require('./getJson').getJSON;
-var postJSON = require('./getJson').postJSON;
+var request = require('request');
 var url = require('url');
 var resolve = require('url').resolve;
 
@@ -23,8 +21,8 @@ function Queue(root) {
 
 Queue.prototype.refresh = function(cb) {
   var self = this;  
-  getJSON(url.parse(self.root), function(status, data) {
-    self.state = data
+  request(self.root, function(status, response, data) {
+    self.state = JSON.parse(data)
     cb(null, self);
   });
 };
@@ -32,10 +30,8 @@ Queue.prototype.refresh = function(cb) {
 Queue.prototype.get = function(index, cb) {
   var self = this;
   var item = self.state.collection.items[index];
-  var opts = url.parse(self.root);
-  opts.path = item.href;
-  getJSON(opts, function(status, data) {
-    cb(null, new Job(self.root, item.href, data));
+  request(resolve(this.root, item.href), function(error, response, data) {
+    cb(null, new Job(self.root, item.href, JSON.parse(data)));
   });
 }
 
@@ -51,36 +47,58 @@ Job.prototype.isType = function(type) {
 
 Job.prototype.start = function(data, cb) {
   if (this.state.start) {
-    var opts = url.parse(this.root);
-    opts.path = resolve(this.root, this.state.start);
-    postJSON(opts, data, cb);
+    var opts = {
+      url: resolve(this.root, this.state.start),
+      method: "POST" }
+    request(opts, cb)
+  } else {
+    //console.log("Start Skipped")
+    cb();
   }
 }
 
 Job.prototype.status = function(data, cb) {
   if (this.state.status) {
-    var opts = url.parse(this.root);
-    opts.path = resolve(this.root, this.state.status);
+    var opts = {
+      url: url.parse(this.root),
+      path: resolve(this.root, this.state.status) }
     if (data) {
-      postJSON(opts, data, cb)
+      opts.json = data;
+      opts.method = "PUT";
+      request(opts, cb);
     } else {
-      getJSON(opts, cb);
+      request(opts, cb);
     }
+  } else {
+    //console.log("Status Skipped")
+    cb();
   }
 };
 
 Job.prototype.complete = function(data, cb) {
   if (this.state.complete) {
-    var opts = url.parse(this.root);
-    opts.path = resolve(this.root, this.state.complete);
-    postJSON(opts, data, cb);
+    var opts = {
+      url: url.parse(this.root),
+      path: resolve(this.root, this.state.complete),
+      body: data,
+      method: "POST" }
+    request(opts, cb);
+  } else {
+    //console.log("Complete Skipped")
+    cb();
   }
 };
 
 Job.prototype.fail = function(data, cb) {
   if (this.state.fail) {
-    var opts = url.parse(this.root);
-    opts.path = resolve(this.root, this.state.fail);
-    postJSON(opts, data, cb);
+    var opts = {
+      url: url.parse(this.root),
+      path: resolve(this.root, this.state.fail),
+      json: data,
+      method: "POST" }
+    request(opts, cb);
+  } else {
+    //console.log("Fail Skipped")
+    cb();
   }
 };
